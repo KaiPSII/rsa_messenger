@@ -1,16 +1,10 @@
 ﻿using System;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Numerics;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.Unicode;
 using System.Threading;
-using System.Timers;
 
 namespace Rsa_Messenger
 {
