@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30611.23
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rsa Messenger", "Rsa Messenger\Rsa Messenger.csproj", "{71CE4C5C-1F40-454B-8686-44B3BF77A413}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rsa Server", "Rsa Server\Rsa Server.csproj", "{0411E7BF-0212-426E-AD39-1ECFA5331F7E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{71CE4C5C-1F40-454B-8686-44B3BF77A413}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71CE4C5C-1F40-454B-8686-44B3BF77A413}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71CE4C5C-1F40-454B-8686-44B3BF77A413}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71CE4C5C-1F40-454B-8686-44B3BF77A413}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0411E7BF-0212-426E-AD39-1ECFA5331F7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0411E7BF-0212-426E-AD39-1ECFA5331F7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0411E7BF-0212-426E-AD39-1ECFA5331F7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0411E7BF-0212-426E-AD39-1ECFA5331F7E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {87712CF0-1A53-478A-944B-B11C636DBE02}
+	EndGlobalSection
+EndGlobal
