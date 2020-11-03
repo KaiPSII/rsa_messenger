@@ -66,10 +66,11 @@ namespace Rsa_Server
                     }
                     var userinfo = new UserInfo();
                     userinfo.name = rs[1];
-                    userinfo.publicIP = rs[2];
-                    userinfo.privateIP = rs[3];
+                    userinfo.privateIP = rs[2];
+                    userinfo.publicIP = client.Client.RemoteEndPoint.ToString().Split(':')[0];
                     userInfos.Add(userinfo);
-                    Console.WriteLine(string.Format("adding user: {0}", rs[1]));
+                    Console.WriteLine(string.Format("User connecting from '{0}'", client.Client.RemoteEndPoint));
+                    Console.WriteLine(string.Format("adding user: {0} with private IP '{1}'", rs[1],rs[2]));
                 }
                 else if (rs[0] == "READING USER")
                 {

@@ -18,6 +18,7 @@ namespace Rsa_Messenger
         public string RSATargetKeyName;
         public byte[] AESKey;
         public string username;
+        public string matchServer;
         static void Main(string[] args)
         {
             Console.InputEncoding = Encoding.UTF8;
@@ -89,7 +90,7 @@ namespace Rsa_Messenger
                 {
                     if (!ip.IsDnsEligible)
                     {
-                        if(ip.Address.ToString() == ipTest)
+                        if (ip.Address.ToString() == ipTest)
                         {
                             return true;
                         }
@@ -107,9 +108,16 @@ namespace Rsa_Messenger
                     Console.Clear();
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine(string.Format(">> SIGNED IN AS '{0}' <<", username));
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine("Initializing PGP2P Messenger");
-                    Console.WriteLine();
+                    if(matchServer == null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine(">> NOT CONNECTED TO A MATCH SERVER <<");
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine(string.Format(">> CONNECTED TO MATCH SERVER '{0}' <<", matchServer));
+                    }
                     if (RSAKey == null)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -413,151 +421,135 @@ namespace Rsa_Messenger
                     }
                     if (k.Key == ConsoleKey.D3)
                     {
-                        Console.WriteLine("0. Connect via username");
-                        Console.WriteLine("1. Connect via IP");
-                        Console.WriteLine("Please make a selection:");
-                        var k2 = Console.ReadKey();
-                        Console.Clear();
-                        string hostName = null;
-                        if (k2.Key == ConsoleKey.D0)
+                        if (RSAKey != null)
                         {
-                            TcpClient client = null;
+                            Console.WriteLine("0. Connect via username");
+                            Console.WriteLine("1. Connect via IP");
+                            Console.WriteLine("Please make a selection:");
+                            var k2 = Console.ReadKey();
+                            Console.Clear();
+                            string hostName = null;
+                            if (k2.Key == ConsoleKey.D0)
+                            {
+                                TcpClient client = null;
+                                for (int i = 0; i < 60; i++)
+                                {
+                                    if (Console.KeyAvailable)
+                                    {
+                                        break;
+                                    }
+                                    if (client == null || !client.Connected)
+                                    {
+                                        try
+                                        {
+                                            client = new TcpClient("msg.aetherdestroyer.net", 24848);
+                                        }
+                                        catch
+                                        {
+                                            Console.Write(".");
+                                        }
+                                    }
+                                    if (client != null && client.Connected)
+                                    {
+                                        Console.Clear();
+                                        Console.WriteLine("Local client created and connected");
+                                        break;
+                                    }
+                                    Thread.Sleep(1000);
+                                    Console.Write(".");
+                                }
+                                if (client != null)
+                                {
+                                    var ns = client.GetStream();
+                                    Console.WriteLine("Enter username:");
+                                    var targetName = Console.ReadLine();
+                                    ns.Write(Encoding.UTF8.GetBytes("READING USER|"));
+                                    ns.Write(Encoding.UTF8.GetBytes(targetName));
+                                    while (!ns.DataAvailable)
+                                    {
+                                        Thread.Sleep(1000);
+                                    }
+                                    var r = Encoding.UTF8.GetString(ReadBytesFromNetworkStream(ns));
+                                    Console.WriteLine("Received user information:");
+                                    var rs = r.Split('|');
+                                    Console.WriteLine(rs[0]);
+                                    Console.WriteLine(rs[1]);
+                                    Thread.Sleep(1000);
+                                    if (IPIsOnNetwork(rs[1]))
+                                    {
+                                        hostName = rs[1];
+                                        Console.WriteLine("Connecting to local IP");
+                                    }
+                                    else
+                                    {
+                                        hostName = rs[0];
+                                        Console.WriteLine("Connecting to public IP");
+                                    }
+                                }
+                            }
+                            if (k2.Key == ConsoleKey.D1)
+                            {
+                                Console.WriteLine("Enter IP/hostname:");
+                                hostName = Console.ReadLine();
+                            }
+                            var listener = new TcpListener(IPAddress.IPv6Any, 24846);
+                            listener.Start();
+                            Console.WriteLine("Press any key to cancel");
+                            Console.Write("Connecting");
+                            TcpClient output = null;
+                            TcpClient input = null;
                             for (int i = 0; i < 60; i++)
                             {
                                 if (Console.KeyAvailable)
                                 {
                                     break;
                                 }
-                                if (client == null || !client.Connected)
+                                if (output == null || !output.Connected)
                                 {
                                     try
                                     {
-                                        client = new TcpClient("msg.aetherdestroyer.net", 24848);
+                                        output = new TcpClient(hostName, 24846);
                                     }
                                     catch
                                     {
                                         Console.Write(".");
                                     }
+                                    if (output != null && output.Connected)
+                                    {
+                                        Console.WriteLine();
+                                        Console.WriteLine("Local client created and connected");
+                                        Thread.Sleep(1000);
+                                    }
                                 }
-                                if (client != null && client.Connected)
+                                if (input == null)
                                 {
-                                    Console.Clear();
-                                    Console.WriteLine("Local client created and connected");
+                                    if (listener.Pending())
+                                    {
+                                        input = listener.AcceptTcpClient();
+                                        Console.WriteLine();
+                                        Console.WriteLine("Local server created and bound");
+                                    }
+                                }
+                                if ((output != null && output.Connected) && input != null)
+                                {
+                                    Console.WriteLine("Two way connection complete");
                                     break;
                                 }
                                 Thread.Sleep(1000);
                                 Console.Write(".");
                             }
-                            if (client != null)
-                            {
-                                var ns = client.GetStream();
-                                Console.WriteLine("Enter username:");
-                                var targetName = Console.ReadLine();
-                                ns.Write(Encoding.UTF8.GetBytes("READING USER|"));
-                                ns.Write(Encoding.UTF8.GetBytes(targetName));
-                                while (!ns.DataAvailable)
-                                {
-                                    Thread.Sleep(1000);
-                                }
-                                var r = Encoding.UTF8.GetString(ReadBytesFromNetworkStream(ns));
-                                var rs = r.Split('|');
-                                Console.WriteLine(rs[0]);
-                                Console.WriteLine(rs[1]);
-                                if (IPIsOnNetwork(rs[1]))
-                                {
-                                    hostName = rs[1];
-                                    Console.WriteLine("Connecting to local IP");
-                                }
-                                else
-                                {
-                                    hostName = rs[0];
-                                    Console.WriteLine("Connecting to public IP");
-                                }
-                            }
-                        }
-                        if (k2.Key == ConsoleKey.D1)
-                        {
-                            Console.WriteLine("Enter IP/hostname:");
-                            hostName = Console.ReadLine();
-                        }
-                        var listener = new TcpListener(IPAddress.IPv6Any, 24846);
-                        listener.Start();
-                        Console.WriteLine("Press any key to cancel");
-                        Console.Write("Connecting");
-                        TcpClient output = null;
-                        TcpClient input = null;
-                        for (int i = 0; i < 60; i++)
-                        {
-                            if (Console.KeyAvailable)
-                            {
-                                break;
-                            }
-                            if (output == null || !output.Connected)
-                            {
-                                try
-                                {
-                                    output = new TcpClient(hostName, 24846);
-                                }
-                                catch
-                                {
-                                    Console.Write(".");
-                                }
-                                if (output != null && output.Connected)
-                                {
-                                    Console.Clear();
-                                    Console.WriteLine("Local client created and connected");
-                                    Thread.Sleep(1000);
-                                }
-                            }
-                            if (input == null)
-                            {
-                                if (listener.Pending())
-                                {
-                                    input = listener.AcceptTcpClient();
-                                    Console.Clear();
-                                    Console.WriteLine("Local server created and bound");
-                                }
-                            }
-                            if ((output != null && output.Connected) && input != null)
-                            {
-                                Console.WriteLine("Two way connection complete");
-                                break;
-                            }
+                            listener.Stop();
+                            Console.WriteLine();
                             Thread.Sleep(1000);
-                            Console.Write(".");
-                        }
-                        listener.Stop();
-                        Console.WriteLine();
-                        Thread.Sleep(2000);
-                        Console.Clear();
-                        Console.WriteLine("Syncing data");
+                            Console.WriteLine("Syncing data");
 
-                        var inS = input.GetStream();
-                        var outS = output.GetStream();
+                            var inS = input.GetStream();
+                            var outS = output.GetStream();
 
-                        //sync usernames and keys
+                            //sync usernames and keys
 
-                        //username
-                        outS.Write(Encoding.UTF8.GetBytes(username.Trim()));
-                        Thread.Sleep(1000);
-                        while (!inS.DataAvailable)
-                        {
-                            Thread.Sleep(1000);
-                        }
-                        while (outS.DataAvailable)
-                        {
-                            Thread.Sleep(1000);
-                        }
-                        var otherName = Encoding.UTF8.GetString(ReadBytesFromNetworkStream(inS));
-                        Console.WriteLine(string.Format("Other client name received: {0}", otherName));
-                        //key
-                        try
-                        {
-                            var myKey = new FileStream(string.Format("Keys\\{0}.xtkey", username), FileMode.Open);
-                            var outBytes = new byte[myKey.Length];
-                            myKey.Read(outBytes, 0, (int)myKey.Length);
-                            myKey.Close();
-                            outS.Write(outBytes);
+                            //username
+                            outS.Write(Encoding.UTF8.GetBytes(username.Trim()));
                             Thread.Sleep(1000);
                             while (!inS.DataAvailable)
                             {
@@ -567,49 +559,78 @@ namespace Rsa_Messenger
                             {
                                 Thread.Sleep(1000);
                             }
-                            var otherKey = ReadBytesFromNetworkStream(inS);
-                            Console.WriteLine("Other client key received");
-                            Console.ForegroundColor = ConsoleColor.Green;
-                            Console.WriteLine("<< CHAT INITIATED >>");
-                            Console.ForegroundColor = ConsoleColor.White;
-                            var sendMessageBuffer = "";
-                            Console.Write(">> ");
-                            //chat loop
-                            while (true)
+                            var otherName = Encoding.UTF8.GetString(ReadBytesFromNetworkStream(inS));
+                            Console.WriteLine(string.Format("Other client name received: {0}", otherName));
+                            //key
+                            try
                             {
-                                if (inS.DataAvailable)
+                                var myKey = new FileStream(string.Format("Keys\\{0}.xtkey", username), FileMode.Open);
+                                var outBytes = new byte[myKey.Length];
+                                myKey.Read(outBytes, 0, (int)myKey.Length);
+                                myKey.Close();
+                                outS.Write(outBytes);
+                                Thread.Sleep(1000);
+                                while (!inS.DataAvailable)
                                 {
-                                    var incomingMessage = ReadBytesFromNetworkStream(inS);
-                                    Console.WriteLine(string.Format("{0}: {1}", otherName, DecryptBytesRSA(incomingMessage, RSAKey)));
-                                    Console.Write(">> ");
+                                    Thread.Sleep(1000);
                                 }
-                                if (Console.KeyAvailable)
+                                while (outS.DataAvailable)
                                 {
-                                    var key = Console.ReadKey();
-                                    if (key.Key == ConsoleKey.Enter)
+                                    Thread.Sleep(1000);
+                                }
+                                var otherKey = ReadBytesFromNetworkStream(inS);
+                                Console.WriteLine("Other client key received");
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine("<< CHAT INITIATED >>");
+                                Console.ForegroundColor = ConsoleColor.White;
+                                var sendMessageBuffer = "";
+                                Console.Write(">> ");
+                                //chat loop
+                                while (true)
+                                {
+                                    if (inS.DataAvailable)
                                     {
-                                        //send message
-                                        Console.WriteLine(string.Format(">> {0}: {1}", username, sendMessageBuffer));
+                                        var incomingMessage = ReadBytesFromNetworkStream(inS);
+                                        Console.CursorLeft = 0;
+                                        Console.Write(new string(' ', Console.WindowWidth));
+                                        Console.CursorLeft = 0;
+                                        Console.WriteLine(string.Format(">> {0}: {1}", otherName, DecryptBytesRSA(incomingMessage, RSAKey)));
                                         Console.Write(">> ");
-                                        outS.Write(EncryptStringRSA(sendMessageBuffer, otherKey));
-                                        sendMessageBuffer = "";
+                                        Console.Write(sendMessageBuffer);
                                     }
-                                    else if (key.Key == ConsoleKey.Backspace && Console.CursorLeft > 1)
+                                    if (Console.KeyAvailable)
                                     {
-                                        sendMessageBuffer = sendMessageBuffer.Remove(sendMessageBuffer.Length - 1);
-                                        Console.Write(" ");
-                                        Console.CursorLeft -= 1;
-                                    }
-                                    else
-                                    {
-                                        sendMessageBuffer += key.KeyChar;
+                                        var key = Console.ReadKey();
+                                        if (key.Key == ConsoleKey.Enter)
+                                        {
+                                            //send message
+                                            Console.WriteLine(string.Format(">> {0}: {1}", username, sendMessageBuffer));
+                                            Console.Write(">> ");
+                                            outS.Write(EncryptStringRSA(sendMessageBuffer, otherKey));
+                                            sendMessageBuffer = "";
+                                        }
+                                        else if (key.Key == ConsoleKey.Backspace && Console.CursorLeft > 1)
+                                        {
+                                            sendMessageBuffer = sendMessageBuffer.Remove(sendMessageBuffer.Length - 1);
+                                            Console.Write(" ");
+                                            Console.CursorLeft -= 1;
+                                        }
+                                        else
+                                        {
+                                            sendMessageBuffer += key.KeyChar;
+                                        }
                                     }
                                 }
                             }
+                            catch (FileNotFoundException)
+                            {
+                                Console.WriteLine(">> ERROR: USER MUST GENERATE KEY PAIR UNDER CURRENT USERNAME <<");
+                                Console.ReadKey();
+                            }
                         }
-                        catch (FileNotFoundException)
+                        else
                         {
-                            Console.WriteLine(" >> ERROR: USER MUST GENERATE KEY PAIR UNDER CURRENT USERNAME <<");
+                            Console.WriteLine(">> ERROR: USER MUST LOAD KEY <<");
                             Console.ReadKey();
                         }
                     }
@@ -630,9 +651,9 @@ namespace Rsa_Messenger
                     {
                         var keyFilePrivate = new FileStream(string.Format("Keys\\{0}_PRIVATE.xkey", username), FileMode.Open);
                         Console.WriteLine("RSA key found. Load key? Y/N:");
-                        var k4 = Console.ReadKey();
+                        var k2 = Console.ReadKey();
                         Console.Clear();
-                        if (k4.Key == ConsoleKey.Y)
+                        if (k2.Key == ConsoleKey.Y)
                         {
                             byte[] bytes = new byte[keyFilePrivate.Length];
                             keyFilePrivate.Read(bytes, 0, (int)keyFilePrivate.Length);
@@ -641,45 +662,57 @@ namespace Rsa_Messenger
                         }
                         keyFilePrivate.Close();
                     }
-                    Console.WriteLine("Connecting to server");
-                    Console.WriteLine("Press any key to cancel (hostname fetching will be unavailable)");
-                    TcpClient client = null;
-                    for (int i = 0; i < 60; i++)
+                    Console.WriteLine("Use match server? Y/N:");
+                    var k3 = Console.ReadKey();
+                    Console.Clear();
+                    if (k3.Key == ConsoleKey.Y)
                     {
-                        if (Console.KeyAvailable)
+                        Console.WriteLine("Enter match server hostname (enter 'default' for provided match server'):");
+                        matchServer = Console.ReadLine();
+                        if(matchServer == "default")
                         {
-                            break;
+                            matchServer = "msg.aetherdestroyer.net";
                         }
-                        if (client == null || !client.Connected)
+                        Console.Clear();
+                        Console.WriteLine("Connecting to server");
+                        Console.WriteLine("Press any key to cancel (hostname fetching will be unavailable)");
+                        TcpClient client = null;
+                        for (int i = 0; i < 60; i++)
                         {
-                            try
+                            if (Console.KeyAvailable)
                             {
-                                client = new TcpClient("msg.aetherdestroyer.net", 24848);
+                                break;
                             }
-                            catch
+                            if (client == null || !client.Connected)
                             {
-                                Console.Write(".");
+                                try
+                                {
+                                    client = new TcpClient(matchServer, 24848);
+                                }
+                                catch
+                                {
+                                    Console.Write(".");
+                                }
                             }
+                            if (client != null && client.Connected)
+                            {
+                                Console.Clear();
+                                Console.WriteLine("Local client created and connected");
+                                break;
+                            }
+                            Thread.Sleep(1000);
+                            Console.Write(".");
                         }
-                        if (client != null && client.Connected)
+                        if (client != null)
                         {
-                            Console.Clear();
-                            Console.WriteLine("Local client created and connected");
-                            break;
+                            var ns = client.GetStream();
+                            ns.Write(Encoding.UTF8.GetBytes("ADDING USER|"));
+                            ns.Write(Encoding.UTF8.GetBytes(username + "|"));
+                            var hostName = Dns.GetHostName();
+                            ns.Write(Encoding.UTF8.GetBytes(Dns.GetHostEntry(hostName).AddressList[0].ToString()));
+                            ns.Close();
+                            client.Close();
                         }
-                        Thread.Sleep(1000);
-                        Console.Write(".");
-                    }
-                    if (client != null)
-                    {
-                        var ns = client.GetStream();
-                        ns.Write(Encoding.UTF8.GetBytes("ADDING USER|"));
-                        ns.Write(Encoding.UTF8.GetBytes(username + "|"));
-                        var hostName = Dns.GetHostName();
-                        ns.Write(Encoding.UTF8.GetBytes(hostName+"|"));
-                        ns.Write(Encoding.UTF8.GetBytes(Dns.GetHostEntry(hostName).AddressList[0].ToString()));
-                        ns.Close();
-                        client.Close();
                     }
                 }
             }
