@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Collections.Generic;
+using System.Data;
 
 namespace Rsa_Server
 {
@@ -15,10 +16,23 @@ namespace Rsa_Server
             var p = new RsaServer();
             p.UsernameServer();
         }
+        byte[] ReadBytesFromNetworkStream(NetworkStream ns)
+        {
+            var bytes = new byte[1024];
+            var l = ns.Read(bytes, 0, 1024);
+            var t = ns.FlushAsync();
+            t.Wait();
+            var bytesT = new byte[l];
+            for (int i = 0; i < l; i++)
+            {
+                bytesT[i] = bytes[i];
+            }
+            return bytesT;
+        }
         public void UsernameServer()
         {
             //search for clients
-            var listener = new TcpListener(IPAddress.Any, 24846);
+            var listener = new TcpListener(IPAddress.Any, 24848);
             listener.Start();
             while (true)
             {
@@ -35,58 +49,42 @@ namespace Rsa_Server
                     }
                 }
                 var ns = client.GetStream();
-                Thread.Sleep(1000);
-                var adding = false;
-                if (ns.DataAvailable)
+                while (!ns.DataAvailable)
                 {
-                    adding = true;
+                    Thread.Sleep(1000);
                 }
-                if (adding)
+                var r = Encoding.UTF8.GetString(ReadBytesFromNetworkStream(ns));
+                var rs = r.Split('|');
+                if (rs[0] == "ADDING USER")
                 {
+                    for (int i = 0; i < userInfos.Count; i++)
+                    {
+                        if (userInfos[i].name == rs[1])
+                        {
+                            userInfos.RemoveAt(i);
+                        }
+                    }
                     var userinfo = new UserInfo();
-                    //name
-                    Thread.Sleep(1000);
-                    while (!ns.DataAvailable)
-                    {
-                        Thread.Sleep(1000);
-                    }
-                    var otherNameBytes = new byte[1024];
-                    var l = ns.Read(otherNameBytes, 0, 1024);
-                    var t = ns.FlushAsync();
-                    t.Wait();
-                    userinfo.name = Encoding.UTF8.GetString(otherNameBytes).Remove(l);
-                    Console.WriteLine(string.Format("Other client name received: {0}", userinfo.name));
-                    //public ip
-                    Thread.Sleep(1000);
-                    while (!ns.DataAvailable)
-                    {
-                        Thread.Sleep(1000);
-                    }
-                    var publicipbytes = new byte[1024];
-                    l = ns.Read(publicipbytes, 0, 1024);
-                    t = ns.FlushAsync();
-                    t.Wait();
-                    userinfo.publicIP = Encoding.UTF8.GetString(publicipbytes).Remove(l);
-                    Console.WriteLine(string.Format("Other client name received: {0}", userinfo.publicIP));
-                    //private ip
-                    Thread.Sleep(1000);
-                    while (!ns.DataAvailable)
-                    {
-                        Thread.Sleep(1000);
-                    }
-                    var privateipbytes = new byte[1024];
-                    l = ns.Read(privateipbytes, 0, 1024);
-                    t = ns.FlushAsync();
-                    t.Wait();
-                    userinfo.privateIP = Encoding.UTF8.GetString(privateipbytes).Remove(l);
-                    Console.WriteLine(string.Format("Other client name received: {0}", userinfo.privateIP));
-
+                    userinfo.name = rs[1];
+                    userinfo.publicIP = rs[2];
+                    userinfo.privateIP = rs[3];
                     userInfos.Add(userinfo);
+                    Console.WriteLine(string.Format("adding user: {0}", rs[1]));
                 }
-                else
+                else if (rs[0] == "READING USER")
                 {
-
+                    Thread.Sleep(1000);
+                    for (int i = 0; i < userInfos.Count; i++)
+                    {
+                        if (userInfos[i].name == rs[1])
+                        {
+                            ns.Write(Encoding.UTF8.GetBytes(userInfos[i].publicIP + "|"));
+                            ns.Write(Encoding.UTF8.GetBytes(userInfos[i].privateIP));
+                        }
+                    }
                 }
+                ns.Close();
+                client.Close();
             }
         }
     }
